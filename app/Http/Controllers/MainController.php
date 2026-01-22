@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 
 class MainController extends Controller
 {
@@ -34,16 +35,15 @@ class MainController extends Controller
         $quiz = $this->criandoPerguntas($nPerguntas);
 
         session()->put([
-            'quiz'=>$quiz,
-            'total_question'=> $nPerguntas,
-            'current_question'=> 1,
+            'quiz' => $quiz,
+            'total_question' => $nPerguntas,
+            'current_question' => 1,
             'correct_aswers' => 0,
-            'wrong_answers'=>0
+            'wrong_answers' => 0
         ]);
 
         return redirect()->route('game');
-
-     }
+    }
 
     private function criandoPerguntas($nPerguntas)
     {
@@ -68,7 +68,7 @@ class MainController extends Controller
 
             shuffle($other_capitals);
 
-            $question['wrong_aswer'] = array_slice($other_capitals, 0, 3);
+            $question['wrong_answers'] = array_slice($other_capitals, 0, 3);
             $question['correct'] = null;
 
             $questions[] = $question;
@@ -76,8 +76,98 @@ class MainController extends Controller
         return $questions;
     }
 
+    public function game()
+    {
+        $quiz = session('quiz');
+        $total_question = session('total_question');
+        $current_question = session('current_question');
+
+        $index = $current_question - 1;
+
+        $answers = $quiz[$index]['wrong_answers'];
+        $answers[] = $quiz[$index]['correct_answer'];
+
+        shuffle($answers);
+
+        return view('game')->with([
+            'country' => $quiz[$index]['country'],
+            'totalQuestion' => $total_question,
+            'currentQuestion' => $current_question,
+            'answers' => $answers
+        ]);
+    }
+
+
     public function telaIncial()
     {
         return view('home');
     }
+
+    public function showResults()
+    {
+        // dd(session());
+
+        $total = session('total_question');
+        $correct_aswer = session('correct_aswer');
+        return view('final_results')->with([
+            'correct_aswer' => session('correct_aswer'),
+            'wrong_aswer' => session('wrong_answers'),
+            'total_question' => session('total_question'),
+            'porcentagem' => round($correct_aswer / $total * 100, 2),
+        ]);
+    }
+    public function aswer($aswer)
+    {
+
+        try {
+            $aswer = Crypt::decryptString($aswer);
+        } catch (\Exception $e) {
+            return redirect()->route('game');
+        }
+
+        $quiz = session('quiz');
+        $currrent_question = session('current_question') - 1;
+        $correct_aswer = $quiz[$currrent_question]['correct_answer'];
+        $wrong_aswer = session('wrong_answers');
+
+        if ($aswer == $correct_aswer) {
+            $correct_aswer++;
+            $quiz[$currrent_question]['correct'] = true;
+        } else {
+            $wrong_aswer++;
+            $quiz[$currrent_question]['correct'] = false;
+        }
+
+        session()->put([
+            'quiz' => $quiz,
+            'wrong_answers' => $wrong_aswer,
+            'correct_answer' => $correct_aswer,
+        ]);
+
+        //preparar a datra para mostrar a resposta
+        $data = [
+            'country' => $quiz[$currrent_question]['country'],
+            'correct_aswer' => $correct_aswer,
+            'aswer' => $aswer,
+            'currentQuestion' => $currrent_question,
+            'total_question' => session('total_question'),
+        ];
+
+        return view('aswer_result')->with($data);
+    }
+
+    public function next_question()
+    {
+        $current_question = session('current_question');
+        $total_question = session('total_question');
+
+        if ($current_question < $total_question) {
+            $current_question++;
+            session()->put('current_question', $current_question);
+            return redirect()->route('game');
+        } else {
+            return redirect()->route('showResults');
+        }
+    }
+
 }

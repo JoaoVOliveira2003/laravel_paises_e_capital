@@ -14,6 +14,10 @@
 <body>
 
     <x-logo/>
+   <center>
+    (Ainda não é a versão final, precisa ajustar uns bugs de nomes de variaveis, que fazem mostrar numero errado em alguns lugares)
+  </center>
+
     {{ $slot  }}
     <x-footer/>
     <script src="{{ asset('assets/bootstrap/bootstrap.bundle.min.js') }}"></script>
